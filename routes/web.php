@@ -25,6 +25,7 @@ Route::middleware(['guest'])->group(function () {
     Route::post('/login', [AuthC::class, 'login'])->name('login');
     Route::get('/register', [AuthC::class, 'showRegisterForm'])->name('auth.regis');
     Route::post('/register', [AuthC::class, 'register'])->name('register');
+
 });
 
 
@@ -33,8 +34,19 @@ Route::middleware('auth')->group(function () {
     // Route::get('/dashboard', [DashboardC::class, 'index'])->name('dashboard.index');
     Route::get('/dashboard', [DashboardC::class, 'index'])->name('dashboard.index');
     Route::get('/logout', [AuthC::class, 'logout'])->name('logout');
-    Route::get('/admins', [UserC::class, 'listAdmins'])->name('admins.list');
-    Route::get('/supervisors', [UserC::class, 'listSupervisors'])->name('supervisors.list');
+    Route::get('/admins', [UserC::class, 'listAdmins'])->name('admin.list'); 
+    Route::get('/admins/data', [UserC::class, 'getAdminData'])->name('admin.data');
+    Route::get('/sepervisors', [UserC::class, 'listSupervisors'])->name('supervisor.list'); // Tampilkan list supervisor
+    Route::get('/supervisors/data', [UserC::class, 'getSupervisorData'])->name('supervisor.data');
+    Route::get('/pengguna', [UserC::class, 'listPengguna'])->name('pengguna.list');
+    Route::get('/pengguna/data', [UserC::class, 'getPenggunaData'])->name('pengguna.data'); 
+    Route::get('/select-cabang', [CabangC::class, 'showSelection'])
+    ->name('cabang.select')
+    ->middleware('auth'); // Hanya user terautentikasi
+
+    Route::post('/select-cabang', [CabangC::class, 'storeSelection'])
+    ->name('cabang.storeSelection')
+    ->middleware('auth');
 
     // User routes
     Route::get('/users', [UserC::class, 'index'])->name('user.index'); // Menampilkan halaman manajemen pengguna (GET /user)
@@ -56,6 +68,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/petugas', [PetugasC::class, 'index'])->name('petugas.index');
     Route::get('petugas//data', [PetugasC::class, 'getPetugasData'])->name('petugas.data');
     Route::post('/petugas', [PetugasC::class, 'store'])->name('petugas.store');
-    Route::put('/{petuga}', [PetugasC::class, 'update'])->name('petugas.update');
-    Route::delete('/{petuga}', [PetugasC::class, 'destroy'])->name('petugas.destroy');
+    Route::put('/petugas/{petuga}', [PetugasC::class, 'update'])->name('petugas.update');
+    Route::delete('/petugas/{petuga}', [PetugasC::class, 'destroy'])->name('petugas.destroy');
 });

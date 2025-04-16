@@ -415,7 +415,10 @@
               <div class="dropdown-divider my-1"></div>
             </li>
             <li>
-              <a class="dropdown-item" href="/logout" target="_blank"> <i class="icon-base bx bx-power-off icon-md me-3"></i><span>Log Out</span> </a>
+              <a class="dropdown-item" href="{{ route('logout') }}"> 
+                <i class="icon-base bx bx-power-off icon-md me-3"></i>
+                <span>Log Out</span> 
+              </a>
             </li>
           </ul>
         </li>

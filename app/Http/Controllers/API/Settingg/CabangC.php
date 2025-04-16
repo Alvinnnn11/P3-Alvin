@@ -5,9 +5,11 @@ namespace App\Http\Controllers\API\Settingg;
 use App\Http\Controllers\Controller;
 use App\Models\Cabang;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class CabangC extends Controller
 {
@@ -16,6 +18,61 @@ class CabangC extends Controller
         $cabangs = Cabang::orderBy('nama_perusahaan')->get();
         return view('cabang.index', compact('cabangs'));
     }
+
+    public function showSelection()
+    {
+        if (!in_array(Auth::user()->level, ['member', 'pengguna'])) {
+             Log::warning('User ' . Auth::id() . ' mencoba akses pemilihan cabang, tapi levelnya ' . Auth::user()->level);
+             return redirect('/dashboard');
+        }
+        $availableCabangs = Cabang::where('status', true)->orderBy('nama_perusahaan')->get();
+        Log::info('Menampilkan halaman pemilihan cabang untuk user: ' . Auth::id());
+        return view('cabang.select', compact('availableCabangs'));
+    }
+
+    public function storeSelection(Request $request)
+    {
+        // Pastikan hanya member/pengguna
+         if (!in_array(Auth::user()->level, ['member', 'pengguna'])) {
+            return redirect('/dashboard');
+        }
+
+        // Validasi input
+        $validator = Validator::make($request->all(), [
+            'cabang_id' => [
+                'required',
+                // Pastikan ID cabang yg dipilih ada dan statusnya aktif
+                Rule::exists('cabangs', 'id')->where(function ($query) {
+                    $query->where('status', true);
+                }),
+            ]
+        ], [
+            'cabang_id.required' => 'Anda harus memilih cabang.',
+            'cabang_id.exists' => 'Cabang yang Anda pilih tidak valid atau tidak aktif.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->route('cabang.select')
+                        ->withErrors($validator)
+                        ->withInput();
+        }
+
+        // Ambil data cabang yang valid
+        $selectedCabang = Cabang::find($request->input('cabang_id'));
+
+        if ($selectedCabang) {
+            // Simpan objek cabang ke session
+            session(['assigned_cabang' => $selectedCabang]);
+            Log::info('User ID: ' . Auth::id() . ' memilih Cabang ID: ' . $selectedCabang->id . '. Disimpan ke session.');
+            // Redirect ke dashboard setelah memilih
+            return redirect()->intended('/dashboard');
+        } else {
+             // Seharusnya tidak terjadi karena sudah divalidasi exists
+             Log::error('Gagal menemukan cabang (ID: '.$request->input('cabang_id').') setelah validasi untuk user: ' . Auth::id());
+             return redirect()->route('cabang.select')->with('error', 'Gagal memproses pilihan cabang.');
+        }
+    }
+
 
     public function getCabangs() // Fungsi untuk AJAX refresh
     {

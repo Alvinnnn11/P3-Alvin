@@ -77,7 +77,6 @@
                                 <option value="admin">Admin</option>
                                 <option value="supervisor">Supervisor</option>
                                 <option value="petugas">Petugas</option>
-                                <option value="member">Member</option>
                                 <option value="pengguna">Pengguna</option>
                             </select>
                         </div>

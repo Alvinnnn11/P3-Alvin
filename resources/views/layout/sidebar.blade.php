@@ -123,11 +123,11 @@
             </a>
             <ul class="menu-sub">
               <li class="menu-item {{ request()->is('users') ? 'active' : '' }}"><a href="/users" class="menu-link"><i class="bx bx-user"></i>  Data User</a></li>
-              <li class="menu-item {{ request()->is('services') ? 'active' : '' }}"><a href="/supervisors" class="menu-link"><i class="bx bx-user"></i> Data Supervisor</a></li>
+              <li class="menu-item {{ request()->is('services') ? 'active' : '' }}"><a href="/sepervisors" class="menu-link"><i class="bx bx-user"></i> Data Supervisor</a></li>
               <li class="menu-item {{ request()->is('petugas') ? 'active' : '' }}"><a href="/petugas" class="menu-link"><i class="bx bx-user"></i> Data Petugas</a></li>
               <li class="menu-item {{ request()->is('services') ? 'active' : '' }}"><a href="/admins" class="menu-link"><i class="bx bx-user"></i> Data admin</a></li>
               <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/tasks" class="menu-link"><i class="bx bx-user"></i> Member</a></li>
-              <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/tasks" class="menu-link"><i class="bx bx-user"></i> pengguna</a></li>
+              <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/pengguna" class="menu-link"><i class="bx bx-user"></i> pengguna</a></li>
               {{-- @if ($userLevel === 'admin' || $userLevel === 'supervisor') --}}
              
               {{-- @endif --}}

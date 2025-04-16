@@ -15,98 +15,115 @@ class PetugasC extends Controller
 {
     public function index()
     {
-        // Ambil semua penugasan, eager load relasi user dan cabang
-        $assignments = Petugas::with(['user', 'cabang'])->latest()->get();
+        try {
+            // Eager load relasi untuk efisiensi query di view
+            $assignments = Petugas::with(['user', 'cabang'])->latest('id')->get(); // Urutkan berdasarkan ID terbaru
 
-        // Ambil user yang levelnya 'petugas' DAN *belum* ada di tabel petugas
-        $assignedUserIds = Petugas::pluck('user_id')->all();
-        $availableUsers = User::where('level', 'petugas')
-                              ->whereNotIn('id', $assignedUserIds)
-                              ->orderBy('name')
-                              ->get();
+            // Ambil user yang levelnya 'petugas' DAN *belum* ada di tabel petugas
+            $assignedUserIds = Petugas::pluck('user_id')->all();
+            $availableUsers = User::where('level', 'petugas')
+                                  ->whereNotIn('id', $assignedUserIds)
+                                  ->orderBy('name')
+                                  ->select('id', 'name', 'email') // Pilih kolom yg perlu saja
+                                  ->get();
 
-        // Ambil semua cabang untuk dropdown
-        $cabangs = Cabang::where('status', true)->orderBy('nama_perusahaan')->get();
+            // Ambil semua cabang yang aktif untuk dropdown
+            $cabangs = Cabang::where('status', true)->orderBy('nama_perusahaan')->select('id', 'nama_perusahaan', 'kode_cabang')->get();
 
-        return view('petugas.index', compact('assignments', 'availableUsers', 'cabangs'));
+            return view('petugas.index', compact('assignments', 'availableUsers', 'cabangs'));
+
+        } catch (\Exception $e) {
+            Log::error("Error fetching data for Petugas index: " . $e->getMessage());
+            // Redirect ke dashboard atau halaman lain dengan pesan error
+            return redirect()->route('dashboard')->with('error', 'Gagal memuat data penugasan petugas.');
+        }
     }
 
+    /**
+     * Mengambil data untuk refresh tabel AJAX.
+     */
     public function getPetugasData()
     {
-        // Fungsi untuk refresh tabel AJAX
-        Log::info('getPetugasData method called for AJAX refresh.');
-        $assignments = Petugas::with(['user', 'cabang'])->latest()->get();
-        return view('petugas.tbody', compact('assignments')); // Return view tbody
+        try {
+            Log::info('getPetugasData method called for AJAX refresh.');
+            $assignments = Petugas::with(['user', 'cabang'])->latest('id')->get();
+            return view('petugas.tbody', compact('assignments')); // Return view tbody
+        } catch (\Exception $e) {
+             Log::error("Error fetching data for Petugas tbody refresh: " . $e->getMessage());
+             // Return response error atau view kosong dengan pesan error
+             return response('<tr><td colspan="7" class="text-center text-danger">Gagal memuat data.</td></tr>', 500);
+        }
     }
 
+    /**
+     * Menyimpan penugasan petugas baru.
+     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'user_id' => [
                 'required',
                 Rule::exists('users', 'id')->where(function ($query) {
-                    // Pastikan user yg dipilih memang levelnya petugas
                     $query->where('level', 'petugas');
                 }),
-                // Pastikan user belum ditugaskan di tabel petugas
-                Rule::unique('petugas', 'user_id')
+                Rule::unique('petugas', 'user_id') // Pastikan user belum ditugaskan
             ],
-            'cabang_id' => 'required|exists:cabangs,id',
-            'tugas' => 'nullable|string|max:500',
+            'cabang_id' => 'required|exists:cabangs,id,status,1', // Pastikan cabang ada & aktif
+            'tugas' => 'nullable|string|max:1000', // Perbesar max length jika perlu
         ], [
             'user_id.required' => 'Petugas (User) wajib dipilih.',
             'user_id.exists' => 'User yang dipilih tidak valid atau bukan level petugas.',
-            'user_id.unique' => 'User ini sudah memiliki penugasan di cabang lain.',
+            'user_id.unique' => 'User ini sudah memiliki penugasan.',
             'cabang_id.required' => 'Cabang wajib dipilih.',
-            'cabang_id.exists' => 'Cabang yang dipilih tidak valid.',
+            'cabang_id.exists' => 'Cabang yang dipilih tidak valid atau tidak aktif.',
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Validation failed on Petugas store:', $validator->errors()->toArray());
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
         try {
-            $assignment = Petugas::create($validator->validated());
-            // Eager load relasi untuk data response jika perlu
+            $validatedData = $validator->validated();
+            Log::info('Creating Petugas Assignment with data:', $validatedData);
+            $assignment = Petugas::create($validatedData);
+            // Eager load relasi agar bisa dikirim kembali jika perlu
             $assignment->load(['user', 'cabang']);
-            return response()->json(['success' => true, 'message' => 'Penugasan petugas berhasil ditambahkan!', 'data' => $assignment]);
+            return response()->json(['success' => true, 'message' => 'Penugasan petugas berhasil ditambahkan!', 'data' => $assignment]); // Mengirim data assignment baru
         } catch (\Exception $e) {
             Log::error('Error storing petugas assignment: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal menyimpan penugasan: ' . $e->getMessage()], 500);
         }
     }
 
-    // Note: Parameter $petuga harus sama dengan {petuga} di route
-    public function update(Request $request, Petugas $petuga)
+    /**
+     * Mengupdate penugasan petugas.
+     * Variabel $petuga HARUS sama dengan parameter route {petuga}.
+     */
+    public function update(Request $request, Petugas $petuga) // Terima objek Petugas (assignment)
     {
+         // Validasi (User ID mungkin tidak boleh diubah, jadi tidak perlu divalidasi lagi jika inputnya disabled)
          $validator = Validator::make($request->all(), [
-            // Saat update, user mungkin tidak bisa diubah, atau jika bisa, validasinya beda
-             'user_id' => [
-                 'required',
-                 Rule::exists('users', 'id')->where(function ($query) {
-                     $query->where('level', 'petugas');
-                 }),
-                 // Cek unique, abaikan record saat ini
-                 Rule::unique('petugas', 'user_id')->ignore($petuga->id)
-             ],
-            'cabang_id' => 'required|exists:cabangs,id',
-            'tugas' => 'nullable|string|max:500',
+            // 'user_id' tidak divalidasi karena disabled di form edit
+            'cabang_id' => 'required|exists:cabangs,id,status,1', // Pastikan cabang ada & aktif
+            'tugas' => 'nullable|string|max:1000',
         ], [
-            // Pesan error sama seperti store
-            'user_id.required' => 'Petugas (User) wajib dipilih.',
-            'user_id.exists' => 'User yang dipilih tidak valid atau bukan level petugas.',
-            'user_id.unique' => 'User ini sudah memiliki penugasan di cabang lain.',
             'cabang_id.required' => 'Cabang wajib dipilih.',
-            'cabang_id.exists' => 'Cabang yang dipilih tidak valid.',
+            'cabang_id.exists' => 'Cabang yang dipilih tidak valid atau tidak aktif.',
         ]);
 
          if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+             Log::warning('Validation failed on Petugas update for assignment ID ' . $petuga->id . ':', $validator->errors()->toArray());
+             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
         try {
-            // Hanya update field yang relevan
-            $petuga->update($validator->validated());
+            $validatedData = $validator->validated();
+             // Ambil user_id dari objek $petuga yang ada, bukan dari request (karena disabled)
+             $validatedData['user_id'] = $petuga->user_id;
+
+            Log::info('Updating Petugas Assignment ID: ' . $petuga->id . ' with data:', $validatedData);
+            $petuga->update($validatedData);
             return response()->json(['success' => true, 'message' => 'Penugasan petugas berhasil diupdate!']);
         } catch (\Exception $e) {
             Log::error('Error updating petugas assignment ' . $petuga->id . ': ' . $e->getMessage());
@@ -114,11 +131,20 @@ class PetugasC extends Controller
         }
     }
 
-    // Note: Parameter $petuga harus sama dengan {petuga} di route
-    public function destroy(Petugas $petuga)
+    /**
+     * Menghapus penugasan petugas.
+     * Variabel $petuga HARUS sama dengan parameter route {petuga}.
+     */
+    public function destroy(Petugas $petuga) // Terima objek Petugas (assignment)
     {
         try {
+            $userId = $petuga->user_id; // Simpan ID user sebelum dihapus (untuk log)
+            Log::info('Attempting to delete Petugas Assignment ID: ' . $petuga->id . ' for User ID: ' . $userId);
+
+            // Hanya hapus record penugasan, BUKAN user atau cabangnya
             $petuga->delete();
+
+            Log::info('Successfully deleted Petugas Assignment ID: ' . $petuga->id);
             return response()->json(['success' => true, 'message' => 'Penugasan petugas berhasil dihapus!']);
         } catch (\Exception $e) {
             Log::error('Error deleting petugas assignment ' . $petuga->id . ': ' . $e->getMessage());

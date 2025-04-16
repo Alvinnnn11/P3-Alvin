@@ -10,18 +10,21 @@
     <td>{{ $assignment->created_at->format('d-m-Y H:i') }}</td>
     <td>
         <button class="btn btn-warning btn-sm btn-edit-petugas" title="Edit Penugasan"
-                data-assignment="{{ json_encode($assignment) }}"> {{-- Kirim data assignment lengkap --}}
+                {{-- Load relasi di sini untuk memastikan ada di JSON --}}
+                data-assignment="{{ json_encode($assignment->load(['user','cabang'])) }}">
             <i class="fas fa-pencil-alt"></i>
         </button>
         <button class="btn btn-danger btn-sm btn-hapus-petugas" title="Hapus Penugasan"
                 data-id="{{ $assignment->id }}"
-                data-name="{{ $assignment->user->name ?? 'Petugas ini' }}"> {{-- Kirim nama untuk konfirmasi --}}
+                {{-- Sertakan data assignment lengkap juga di tombol hapus --}}
+                data-assignment="{{ json_encode($assignment->load(['user','cabang'])) }}"
+                data-name="{{ $assignment->user->name ?? 'Petugas ini' }}">
             <i class="fas fa-trash-alt"></i>
         </button>
     </td>
 </tr>
 @empty
 <tr>
-    <td colspan="7" class="text-center">Tidak ada data penugasan petugas ditemukan.</td>
+    <td colspan="7" class="text-center">Tidak ada data penugasan petugas ditemukan.</td> {{-- Colspan 7 --}}
 </tr>
 @endforelse
