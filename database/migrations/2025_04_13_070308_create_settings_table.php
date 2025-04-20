@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('alamat');
             $table->string('telepon');
             $table->string('website');
+            $table->decimal('membership_fee', 15, 2)->default(25000.00); 
             $table->timestamps();
         });
     }

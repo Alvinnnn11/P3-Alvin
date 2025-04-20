@@ -18,28 +18,64 @@ class SettingC extends Controller
         $user = Auth::user();
         $cabangInfo = session('assigned_cabang'); // Ambil dari session
         $setting = null; // Inisialisasi setting global
-        $isPetugasView = false; // Flag untuk view
+        $isBranchView = false; // Defaultnya bukan view cabang
 
-        if ($user->level === 'petugas' && $cabangInfo) {
-            // Jika petugas dan punya data cabang di session
-            $isPetugasView = true;
-            // Data yang dikirim ke view adalah $cabangInfo
-        } else if ($user->level !== 'petugas') {
-            // Jika bukan petugas (misal admin/supervisor), ambil setting global
-            $setting = Setting::first();
-            if (!$setting) {
-                 // Jika belum ada setting global sama sekali, bisa buat default
-                 // $setting = new Setting(); // Atau redirect/beri pesan error
-                 // Untuk sekarang, biarkan null dan handle di view
-                 // Atau buat record default saat migrasi Setting pertama kali
+        // Cek apakah user adalah petugas ATAU supervisor DAN punya info cabang di session
+        if (in_array($user->level, ['petugas', 'supervisor'])) {
+            if ($cabangInfo) {
+                // Coba reload dari DB
+                $cabangInfo = Cabang::find($cabangInfo->id);
+                if ($cabangInfo) {
+                    session(['assigned_cabang' => $cabangInfo]); // Update session
+                    $isBranchView = true;
+                    Log::info("Displaying branch view for {$user->level} ID: {$user->id}, Cabang ID: {$cabangInfo->id}");
+                } else {
+                    Log::error("Assigned cabang ID {$cabangInfo->id} not found in DB for user {$user->id}. Clearing session.");
+                    session()->forget('assigned_cabang');
+                    $cabangInfo = null; // Pastikan null jika tidak ketemu
+                    // Biarkan $isBranchView false, akan jatuh ke logika else di bawah jika admin, atau else di view jika petugas/spv
+                }
+            } else {
+                 Log::warning("User {$user->level} ID: {$user->id} has no assigned_cabang in session.");
+                 // Biarkan $isBranchView false
             }
-        } else {
-            // Kasus lain (misalnya petugas tapi tidak ada info cabang di session)
-            // Mungkin redirect atau tampilkan pesan?
-            // Untuk saat ini, kita anggap akan tampilkan pesan "Tidak ada data" di view
         }
-
-        return view('setting.index', compact('setting', 'cabangInfo', 'isPetugasView'));
+    
+        // Jika BUKAN view cabang, coba ambil setting global (hanya untuk admin?)
+        // Asumsi hanya admin yang bisa lihat/edit setting global
+        if (!$isBranchView && $user->level === 'admin') {
+            Log::info("User is admin. Fetching global settings.");
+            $setting = Setting::first(); // Gunakan S Kapital
+            if (!$setting) {
+                Log::warning("Global setting record not found in 'settings' table.");
+                // Anda bisa memilih:
+                // 1. Buat objek kosong agar form tetap tampil
+                 $setting = new Setting();
+                // 2. Atau biarkan null dan tampilkan pesan error di view jika $setting null
+                // $setting = null; // <-- Pilihan 2
+            } else {
+                 Log::info("Global setting found.");
+            }
+        } else if (!$isBranchView && !in_array($user->level, ['petugas', 'supervisor', 'admin'])) {
+            // Handle user level lain yg tidak punya view cabang & bukan admin
+             Log::warning("User level '{$user->level}' does not have access to global settings or branch view.");
+             // Mungkin redirect atau set variabel agar view menampilkan pesan akses ditolak
+             // $setting = null; // Pastikan null
+             // $cabangInfo = null;
+        }
+    
+    
+        Log::info('Variables before returning setting.index view:', [
+            'isBranchView' => $isBranchView,
+            'cabangInfo_isset' => isset($cabangInfo),
+            'setting_isset' => isset($setting),
+            'setting_type' => isset($setting) ? get_class($setting) : gettype($setting)
+        ]);
+    
+        // View akan menampilkan form cabang jika $isBranchView=true & $cabangInfo ada
+        // View akan menampilkan form global jika $isBranchView=false & $setting ada (meski kosong)
+        // View akan menampilkan error jika $isBranchView=false & $setting null (jika Anda memilih opsi 2 di atas)
+        return view('setting.index', compact('setting', 'cabangInfo', 'isBranchView'));
     }
 
     /**
@@ -49,19 +85,13 @@ class SettingC extends Controller
     {
         $user = Auth::user();
 
-        if ($user->level === 'petugas') {
-            // --- LOGIKA UPDATE CABANG (UNTUK PETUGAS) ---
+        if (in_array($user->level, ['petugas', 'supervisor'])) {
+            // --- LOGIKA UPDATE CABANG (UNTUK PETUGAS/SUPERVISOR) ---
             $cabangInfo = session('assigned_cabang');
-
-            if (!$cabangInfo) {
-                return redirect()->route('setting.index')->with('error', 'Data cabang Anda tidak ditemukan di session.');
-            }
-
+            if (!$cabangInfo) { return redirect()->route('setting.index')->with('error', 'Data cabang Anda tidak ditemukan di session.'); }
             $cabangToUpdate = Cabang::find($cabangInfo->id);
+            if (!$cabangToUpdate) { return redirect()->route('setting.index')->with('error', 'Cabang yang akan diupdate tidak ditemukan.'); }
 
-            if (!$cabangToUpdate) {
-                 return redirect()->route('setting.index')->with('error', 'Cabang yang akan diupdate tidak ditemukan.');
-            }
 
             // Validasi data input (mirip CabangController@update, tapi tanpa kode_cabang)
             $validator = Validator::make($request->all(), [

@@ -363,6 +363,18 @@
         </li>
         <!--/ Notification -->
         <!-- User -->
+        <a class="nav-link hide-arrow" href="{{ route('member.index') }}" title="Saldo Member Anda">
+          <i class='bx bx-wallet bx-sm'></i>
+          <span class="d-none d-sm-inline-block">
+              Saldo: 
+              @if(Auth::user()->customer)
+                  Rp {{ number_format(Auth::user()->customer->saldo, 0, ',', '.') }}
+              @else
+                  Rp 0
+              @endif
+          </span>
+      </a>
+  </li>
         <li class="nav-item navbar-dropdown dropdown-user dropdown">
           <a class="nav-link dropdown-toggle hide-arrow p-0" href="javascript:void(0);" data-bs-toggle="dropdown">
             <div class="avatar avatar-online">

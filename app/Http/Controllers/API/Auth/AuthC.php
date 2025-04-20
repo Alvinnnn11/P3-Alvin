@@ -65,6 +65,27 @@ class AuthC extends Controller
                     Log::warning('Petugas User ID: ' . $user->id . ' tidak memiliki penugasan cabang yang valid.');
                     // Tetap ke dashboard, tapi tanpa info cabang di session
                 }
+
+} elseif ($user->level === 'supervisor') { // <<< BLOK BARU UNTUK SUPERVISOR >>>
+    Log::info('User adalah supervisor. Mencoba load assignment...');
+
+    // ===== PENTING: Ganti 'supervisorAssignment' dengan NAMA RELASI yang benar di Model User Anda! =====
+    // Nama relasi ini harus menunjuk ke model SupervisorAssignment Anda.
+    $user->load('supervisor.cabang'); // Memuat relasi penugasan supervisor dan cabangnya
+
+    // Cek apakah penugasan dan cabangnya berhasil dimuat
+    // Jika relasi Anda hasMany (misal 'supervisorAssignments'), Anda perlu logika tambahan
+    // Misalnya mengambil assignment pertama: $user->supervisorAssignments->first()
+    if ($user->supervisor && $user->supervisor->cabang) {
+        $assignedCabang = $user->supervisor->cabang;
+        Log::info('Supervisor - Ditemukan Cabang Penugasan: ID=' . $assignedCabang->id . ', Nama=' . $assignedCabang->nama_perusahaan);
+        // Simpan objek cabang ke session
+        session(['assigned_cabang' => $assignedCabang]);
+        // Tujuan redirect tetap dashboard.index
+    } else {
+        Log::warning('Supervisor User ID: ' . $user->id . ' tidak memiliki penugasan cabang yang valid atau relasi tidak ditemukan.');
+        // Tetap ke dashboard, tapi tanpa info cabang di session
+    }
             } elseif ($user->level === 'member' || $user->level === 'pengguna') {
                 Log::info('User adalah member/pengguna. Mengarahkan ke pemilihan cabang.');
                 // Ganti tujuan redirect ke halaman pemilihan cabang

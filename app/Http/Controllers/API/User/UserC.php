@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\user;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
@@ -108,7 +109,7 @@ class UserC extends Controller
             'foto_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'password' => 'required|string|min:7',
             'status' => 'required|boolean',
-            'intended_level' => ['sometimes', Rule::in(['admin', 'supervisor', 'pengguna'])], // Validasi opsional helper field
+            'intended_level' => ['sometimes', Rule::in(['admin', 'supervisor', 'pengguna'])], 
         ];
 
         $levelToSave = 'pengguna'; // Default level
@@ -154,6 +155,14 @@ class UserC extends Controller
 
             Log::info('Creating user with final data:', $validatedData);
             $user = User::create($validatedData);
+
+            if ($user->level === 'pengguna') {
+                Customer::create([
+                    'user_id' => $user->id,
+                    'saldo'   => 0, 
+                ]);
+                Log::info('Customer record created for pengguna: ' . $user->id);
+            }
 
             return response()->json(['success' => true, 'message' => 'User ' . ucfirst($levelToSave) . ' berhasil ditambahkan!', 'data' => $user]);
 

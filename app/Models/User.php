@@ -54,4 +54,34 @@ class User extends Authenticatable
     {
         return $this->hasOne(Petugas::class, 'user_id');
     }
+    public function supervisor() 
+    {
+        return $this->hasOne(Supervisor::class, 'user_id');
+    }
+    public function customer() 
+    {
+        return $this->hasOne(Customer::class, 'user_id');
+    }
+    public function membership() { 
+        return $this->hasOne(Member::class, 'user_id'); 
+    }
+    public function transactions() { 
+        return $this->hasMany(transaction::class, 'user_id');
+     } // Relasi ke transaksi
+
+    // Helper cek status member AKTIF
+    public function isMemberActive(): bool{
+        // Cek apakah relasi membership ada DAN status is_active di tabel members = true
+        return $this->membership && $this->membership->is_active === true;
+        // Jika Anda pakai expires_at dan status string 'active':
+        // return $this->membership && $this->membership->status === 'active' && ($this->membership->expires_at === null || $this->membership->expires_at->isFuture());
+    }
+    // Helper cek apakah sudah pernah join member (meski mungkin skrg tidak aktif)
+    public function hasMembershipRecord(): bool {
+        return $this->membership()->exists();
+    }
+    // Helper ambil saldo
+    public function getBalance(): float {
+        return $this->membership ? (float) $this->membership->balance : 0.00;
+    }
 }

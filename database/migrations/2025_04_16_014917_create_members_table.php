@@ -13,12 +13,9 @@ return new class extends Migration
     {
         Schema::create('members', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')
-            ->unique()
-            ->constrained('users')
-            ->onDelete('cascade'); // Jika user dihapus, status membernya juga hilang
-      $table->date('expires_at')->nullable(); // Opsional: Tanggal kadaluarsa member
-      $table->string('status')->default('active');
+            $table->foreignId('user_id')->unique()->constrained('users')->onDelete('cascade');
+            $table->boolean('is_active')->default(false); // Aktif setelah bayar fee?
+            $table->timestamp('joined_at')->nullable();
             $table->timestamps();
         });
     }

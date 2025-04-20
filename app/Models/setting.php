@@ -10,5 +10,9 @@ class setting extends Model
     use HasFactory;
     protected $table = 'settings';
     protected $primaryKey = 'id_setting';
-    protected $fillable = ['logo', 'nama_perusahaan', 'alamat', 'telepon', 'website', 'email'];
+    protected $fillable = ['logo', 'nama_perusahaan', 'alamat', 'telepon', 'website', 'email','membership_fee'];
+    protected $casts = [
+        'membership_fee' => 'decimal:2', // Casting
+    ];
+
 }

@@ -76,8 +76,8 @@
             <ul class="menu-sub">
                 {{-- @if ($userLevel === 'admin' || $userLevel === 'supervisor') --}}
                 <li class="menu-item {{ request()->is('cabang') ? 'active' : '' }}"><a href="/cabang" class="menu-link"><i class="bx bx-home"></i> Cabang</a></li>
-                <li class="menu-item {{ request()->is('type') ? 'active' : '' }}"><a href="/type" class="menu-link"><i class="bx bx-shape-circle"></i> Promo</a></li>
-                <li class="menu-item {{ request()->is('kategori') ? 'active' : '' }}"><a href="/kategori" class="menu-link"><i class="bx bx-category"></i> Layanan</a></li>
+                <li class="menu-item {{ request()->is('type') ? 'active' : '' }}"><a href="/promo" class="menu-link"><i class="bx bx-shape-circle"></i> Promo</a></li>
+                <li class="menu-item {{ request()->is('kategori') ? 'active' : '' }}"><a href="/layanan" class="menu-link"><i class="bx bx-category"></i> Layanan</a></li>
                 <li class="menu-item {{ request()->is('satuan') ? 'active' : '' }}"><a href="/satuan" class="menu-link"><i class="bx bx-box"></i> Satuan</a></li>
                 {{-- @endif --}}
                 {{-- @if ($userLevel === 'admin' || $userLevel === 'supervisor' || $userLevel === 'petugas' || $userLevel === 'teknisi') --}}
@@ -99,6 +99,9 @@
             </a>
             <ul class="menu-sub">
                 <li class="menu-item {{ request()->is('peminjaman') ? 'active' : '' }}"><a href="/peminjaman" class="menu-link"><i class="bx bx-calendar-check"></i> Pesanan Laundry</a></li>
+                <li class="menu-item {{ request()->is('topup') ? 'active' : '' }}"><a href="{{ url('/topupsaldo/' . optional(Auth::user()->customer)->id) }}" class="menu-link">
+                  <i class="bx bx-calendar-check"></i> TopUp Saldo
+              </a>
                 <li class="menu-item {{ request()->is('services') ? 'active' : '' }}"><a href="/services" class="menu-link"><i class="bx bx-package"></i> Item Pesanan</a></li>
                 <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/tasks" class="menu-link"><i class="bx bx-package"></i> Pembayaran</a></li>
                 {{-- @if ($userLevel === 'admin' || $userLevel === 'supervisor') --}}
@@ -115,6 +118,8 @@
   
         <!-- Manajemen Pengguna -->
         {{-- @if ($userLevel !== 'user') --}}
+              {{-- @if(in_array($userLevel, ['admin', 'supervisor','pengguna']))
+         --}}
         <li class="menu-header small">Pengguna</li>
         <li class="menu-item {{ request()->is('users') ? 'active' : '' }}">
           <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -122,21 +127,48 @@
                 <div>Manajemen Pengguna</div>
             </a>
             <ul class="menu-sub">
+              @if(in_array($userLevel, ['admin']))
               <li class="menu-item {{ request()->is('users') ? 'active' : '' }}"><a href="/users" class="menu-link"><i class="bx bx-user"></i>  Data User</a></li>
+              @endif       
+              {{-- @if(in_array($userLevel, ['admin', 'supervisor']))
               <li class="menu-item {{ request()->is('services') ? 'active' : '' }}"><a href="/sepervisors" class="menu-link"><i class="bx bx-user"></i> Data Supervisor</a></li>
+              @endif --}}
+              @if(in_array($userLevel, ['admin', 'supervisor','petugas']))
               <li class="menu-item {{ request()->is('petugas') ? 'active' : '' }}"><a href="/petugas" class="menu-link"><i class="bx bx-user"></i> Data Petugas</a></li>
+              @endif
+              @if(in_array($userLevel, ['admin']))
               <li class="menu-item {{ request()->is('services') ? 'active' : '' }}"><a href="/admins" class="menu-link"><i class="bx bx-user"></i> Data admin</a></li>
-              <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/tasks" class="menu-link"><i class="bx bx-user"></i> Member</a></li>
+              @endif
+              @if(in_array($userLevel, ['admin', 'supervisor','petugas','pengguna']))
+              <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/member" class="menu-link"><i class="bx bx-user"></i> daftar Member</a></li>
+              @endif
+              @if(in_array($userLevel, ['admin', 'supervisor','petugas']))
+              <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/findAllMember" class="menu-link"><i class="bx bx-user"></i>Data Member</a></li>
               <li class="menu-item {{ request()->is('task') ? 'active' : '' }}"><a href="/pengguna" class="menu-link"><i class="bx bx-user"></i> pengguna</a></li>
+              @endif
+              @if(in_array($userLevel, ['admin', 'supervisor']))
+              <li class="menu-item {{ request()->is('supervisor') ? 'active' : '' }}"><a href="/supervisor" class="menu-link"><i class="bx bx-user"></i> Supervisor baru</a></li>
+              @endif
+              @if(in_array($userLevel, ['admin', 'supervisor']))
+              <li class="menu-item {{ request()->is('supervisor') ? 'active' : '' }}"><a href="/customers" class="menu-link"><i class="bx bx-user"></i> customer </a></li>
+              @endif
               {{-- @if ($userLevel === 'admin' || $userLevel === 'supervisor') --}}
-             
+              {{-- @endif --}}
               {{-- @endif --}}
           </ul>
         </li>
         {{-- @endif --}}
+        @if(in_array($userLevel, ['admin', 'supervisor','pengguna']))
+        <li class="menu-item {{ request()->is('history') ? 'active' : '' }}">
+          <a href="/history" class="menu-link">
+              <i class="menu-icon bx bx-history"></i>
+              <div>History</div>
+          </a>
+      </li>
+      @endif
   
         <!-- Pengaturan (Hanya Admin) -->
-        {{-- @if ($userLevel === 'admin') --}}
+        @if(in_array($userLevel, ['admin', 'supervisor','petugas']))
         <li class="menu-header small">Pengaturan</li>
         <li class="menu-item {{ request()->is('setting*') ? 'active' : '' }}">
             <a href="{{ route('setting.index') }}" class="menu-link">
@@ -144,7 +176,7 @@
                 <div>Pengaturan Sistem</div>
             </a>
         </li>
-        {{-- @endif --}}
+        @endif
     </ul>
   </aside>  
   
